@@ -1,6 +1,7 @@
 node_modules/
 build/
 dist/
+lib/
 
-rotero.d.ts
-rotero.js
+*.d.ts
+*.js

@@ -1,78 +1,101 @@
 # Rotero.js
 
-## SPA hash routing for single page Vanilla.js app
-
-___
+## SPA hash routing for Vanilla.js app
 
 ### Route handling
 
+#### With web bundler
+---
 ```js
-	import rotero from "rotero";
+import rotero from "rotero";
 
-	const router = rotero();
+const router = rotero();
 
-	//handling '/' route
-	router.on("/", (req, res) => {
-		res.send("Home Page");
-	});
+//handling '/' route
+// '/' and '' are not same
+router.on("/", (req, res) => {
+	res.send("Home Page");
+});
 
-    //must run the router to start
-	router.run();
+//must run the router to start
+router.run();
+```
+---
+
+### Without web bundler
+---
+```html
+<!-- index.html -->
+<script src="main.js" type="module"></script>
 ```
 
-### Use with other router
+```js
+//main.js
+import rotero from "./rotero.js"
+
+const router = rotero();
+
+router.on("/", (req, res) => {
+	res.send("Home Page");
+});
+
+router.run();
+---
+
+### Dynamic params
 
 ```js
-	const router = rotero();
-	const router_page = rotero();
+router.on("/page/:id", (req, res) => {
+	console.log(req.params.get("id"))	//id
+});
+```
 
-	// '/'
-	router.on("/", (req, res) => {
-			res.send("<h1>Home</h1>");
-	});
+### Router binding
 
-	router_page.on("/about", (req, res) => {
-		res.send("<h1>About</h1>")
-	});
+```js
+const router = rotero();
+const router_page = rotero();
 
-	//This will bind '/about' to '/page/about'
-	router.use("/page", router_page);
+router.on("/", (req, res) => {
+	res.send("<h1>Home</h1>");
+});
 
-	router.run();
+router_page.on("/about", (req, res) => {
+	res.send("<h1>About</h1>")
+});
+
+//This will bind '/page' to '/about' => '/about/page'
+router.use("/page", router_page);
+
+router.run();
 ```
 
 ### Styling
 
 ```js
-	router.on("/", (req, res) => {
-			res.send("<h1>Home</h1>");
-			//applies style to the current page in the route
-			res.style = `h1 {
-				color : blue;
-			}`;
-	});
+router.on("/", (req, res) => {
+	res.send("<h1>Home</h1>");
+	//applies style to the current page in the route
+	res.style = `h1 {
+		color : blue;
+	}`;
+});
 ```
 
 ### Redirecting
 
 ```js
-	router.on("/", (req, res) => {
-		//Redirects to '/auth'
-		res.goto("/auth");
-	});
+router.on("/", (req, res) => {
+	//Redirects to '/auth'
+	res.goto("/auth");
+});
 ```
 
-### Default route | 404
+### Default route
 
 ```js
-    router.on("*", (req, res) => {
-        console.error("Page not found");
-    })
+//redirects all unhandled routes to this handler
+router.all = (req, res) => {
+	console.error("Page not found");
+}
 ```
-
-___
-
-## _Note_ : **The routes are not regex but absolute to hash except for '*'**
-
-It is express like implementation of single page application with hash routing
-___

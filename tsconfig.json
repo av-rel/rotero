@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "es2021",
+      "dom"
+    ],
+    "target": "es2015",
+    "module": "esnext",
+    "removeComments": true,
+    "alwaysStrict": true,
+    "allowUnreachableCode": false, 
+    "noImplicitAny": true,
+    "declaration": true,
+    "strictNullChecks": true, 
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+ //   "noUnusedLocals": true, 
+    "noUnusedParameters": true,
+    "noEmitOnError": true,
+    "strict": true
+  }
+}

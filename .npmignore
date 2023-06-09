@@ -2,3 +2,5 @@ node_modules/
 .github/
 
 rotero.ts
+pregexp.ts
+tsconfig.json

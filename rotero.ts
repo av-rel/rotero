@@ -1,7 +1,14 @@
+import { match } from "./pregexp.js";
+
+export type RouteHandler = (req : Request, res : Response) => void;
+export type Routes =  Map<string, RouteHandler>;
+export type ReqParams = Map<string, string>;
+
 export type Request = {
 	url	: string;
 	path	: string;
 	query	: URLSearchParams;
+	params  : ReqParams
 };
 export type Response = {
 	title : string;
@@ -10,25 +17,6 @@ export type Response = {
 	send(body : string) : void;
 	goto(route : string): void;
 };
-export type RouteHandler = (req : Request, res : Response) => void;
-export type Routes =  Map<string, RouteHandler>;
-
-
-function resolve_path(path : string) : string {
-	let p : string = path
-			.replaceAll("\\", "/")
-			.split("/")
-			.filter((path : string) => path.length)
-			.join()
-			.replaceAll(",", "/");
-
-	return "/" + p;
-}
-
-function resolve_query(path : string) : URLSearchParams {
-	let q = path.substring(path.indexOf("?"));
-	return new URLSearchParams(q);
-}
 
 function default_route(req : Request, res : Response) {
 	res.title = "404 | Not Found";
@@ -45,26 +33,28 @@ function default_route(req : Request, res : Response) {
 	console.error(`GET ${req.path} 404 (Page not found)`);
 }
 
-function route_manager(root : HTMLElement, routes : Routes) : void {
-	let path  : string = resolve_path(window.location.hash.substring(1).split("?")[0]);
-	let query : URLSearchParams = resolve_query(window.location.hash);
+function route_manager(root : HTMLElement, routes : Routes, def : RouteHandler) : void {
+	let path  : string = window.location.hash.substring(1);
+	let query : URLSearchParams = new URLSearchParams(window.location.search);
 
 	let req : Request = {
 		url   : window.location.href,
 		path,
+		params : new Map(),
 		query,
 	} as Request;
 	let res : Response = {
-		body : "",
-		send : function(body : string)  : void {res.body += body},
+		title: document.body.title,
+		body : root.innerHTML.toString(),
+		send : function(body : string)  : void {res.body = body},
 		goto : function(route : string) : void {
 			const url = new URL(window.location.href);
-			url.hash = resolve_path(route);
+			url.hash = route;
 			window.location.href = url.href;
 		}
 	} as Response;
 
-	let handler : RouteHandler = routes.get(path) || default_route as RouteHandler;
+	let handler : RouteHandler = get_handler(path, req, routes) ?? def;
 	handler(req, res);
 
 	if (res.title) document.title = res.title;
@@ -73,30 +63,35 @@ function route_manager(root : HTMLElement, routes : Routes) : void {
 	root.innerHTML = res.body;
 }
 
-	
+function get_handler(path : string, req : Request, routes : Routes) : RouteHandler | null {
+	let handler : RouteHandler | null = null;
+
+	routes.forEach((val, key) => {
+		let result : any = match(key, { encode : encodeURI, decode: decodeURI })(path);
+		req.path = result.path || path
+
+		if (result) {
+			if (result.params) {
+				(Object.keys(result.params) as (keyof typeof result.params)[]).forEach(key => {
+					req.params.set(key as string, result.params[key] as string)
+				});
+			}
+			handler = val;
+		}
+	});
+
+	return handler;
+}
+
 export class Router {
-	private node : string;
+	private	node : string;
 	private root : HTMLElement;
 	private routes : Routes;
+	public  all : RouteHandler;
 
 	constructor(node : string = "#app") {
 		this.node = node;
 		this.routes = new Map();
-	}
-
-	public on(route: string, handler : RouteHandler) : void {
-		this.routes.set(resolve_path(route), handler);
-	}
-
-	public use(route : string, router : Router) : void {
-		router.routes.forEach((v : RouteHandler, k : string, _ : Routes) => this.routes.set(resolve_path(route + '/' + k), v));
-	}
-
-	public remove(route : string) : void {
-		this.routes.delete(route);
-	}
-
-	public run() : void {
 		let app : null | HTMLElement = document.querySelector(this.node);
 		if (!app) {
 			app = document.createElement("div");
@@ -104,9 +99,24 @@ export class Router {
 			document.body.appendChild(app);
 		}
 		this.root = app;
+		this.all = default_route
+	}
 
-		window.addEventListener("DOMContentLoaded", () : void => route_manager(this.root, this.routes))
-		window.addEventListener('hashchange', () : void => route_manager(this.root, this.routes));
+	public on(route: string, handler : RouteHandler) : void {
+		this.routes.set(route, handler);
+	}
+
+	public use(route : string, router : Router) : void {
+		router.routes.forEach((v : RouteHandler, k : string, _ : Routes) => this.routes.set(route + k, v));
+	}
+
+	public remove(route : string) : void {
+		this.routes.delete(route);
+	}
+
+	public run() : void {
+		window.addEventListener("DOMContentLoaded", () : void => route_manager(this.root, this.routes, this.all))
+		window.addEventListener('hashchange', () : void => route_manager(this.root, this.routes, this.all));
 	}
 }
 
